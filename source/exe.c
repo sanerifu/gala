@@ -23,12 +23,13 @@ int main() {
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-    GalaContext ESTD_CLEAN(galaDestroyContext) context = {0};
-    ESTD_BUBBLE(galaInitContext(&context), "Could not initialize engine context");
+    GalaContext ESTD_CLEAN(galaDestroyContext) engine = {0};
+    ESTD_BUBBLE(galaInitContext(&engine), "Could not initialize engine context");
 
     while (!glfwWindowShouldClose(window)) {
-        glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        galaUpdate(&engine);
+        galaRender(&engine);
+
         glfwPollEvents();
         glfwSwapBuffers(window);
     }

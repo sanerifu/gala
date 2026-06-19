@@ -15,4 +15,7 @@ GalaResult galaInitContext(GalaContext* context);
 void galaDestroyContext(GalaContext* context);
 void galaDestroyContextWrapper(void* context);
 
+GalaResult galaUpdate(GalaContext* context);
+GalaResult galaRender(GalaContext* context);
+
 #endif
