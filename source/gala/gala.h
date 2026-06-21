@@ -5,7 +5,7 @@
 
 typedef enum GalaResult {
     GALA_SUCCESS = ESTD_SUCCESS,
-    GALA_CANNOT_PUSH
+    GALA_CANNOT_PUSH = ('G' << 24) | ('L' << 16)
 } GalaResult;
 
 typedef enum GalaEventType {
