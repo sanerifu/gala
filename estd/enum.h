@@ -31,6 +31,7 @@
     }
 #define ___ESTD_ENUM_FROMSTRING_SEP else
 
+
 #define ESTD_ENUM(typename, data)                                                                                      \
     typedef enum typename {                                                                                            \
         data(___ESTD_ENUM_NOVALUE_ELEMENT_APPLY, ___ESTD_ENUM_VALUE_ELEMENT_APPLY, ___ESTD_ENUM_ELEMENT_SEP)           \
