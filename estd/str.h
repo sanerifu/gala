@@ -44,7 +44,7 @@ extern uint32_t estdCrc32(EstdString input);
 
 #endif
 
-#if (!defined(ESTD_STRING_IMPLEMENTATION) || defined(ESTD_ALL_IMPLEMENTATION)) && !defined(__ESTD_STRING_C__)
+#if (defined(ESTD_STRING_IMPLEMENTATION) || defined(ESTD_ALL_IMPLEMENTATION)) && !defined(__ESTD_STRING_C__)
 #define __ESTD_STRING_C__
 
 #include <ctype.h>
