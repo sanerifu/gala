@@ -6,7 +6,7 @@ export class Gala {
         this.canvas = canvas;
         const gl = this.canvas.getContext("webgl2");
         if (gl === null) {
-            throw "Cannot initialize WebGL 2 context";
+            throw Error("Cannot initialize WebGL 2 context");
         }
         this.gl = gl;
     }
