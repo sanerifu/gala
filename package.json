@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "dev": "esbuild source/main.ts --bundle --minify --sourcemap --outfile=dist/main.js --watch",
-    "build": "esbuild source/main.ts --bundle --minify --sourcemap --outfile=dist/main.js"
+    "dev": "esbuild source/index.ts --bundle --minify --sourcemap --outfile=dist/index.js --watch",
+    "build": "esbuild source/index.ts --bundle --minify --sourcemap --outfile=dist/index.js"
   }
 }
