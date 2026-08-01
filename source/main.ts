@@ -1,7 +1,7 @@
-export type Brand<K, T> = K & { readonly __brand: T };
+export type Brand<K> = K & { readonly __brand: unique symbol };
 
-type VboId = Brand<number, "VboId">;
-type EboId = Brand<number, "EboId">;
+type VboId = Brand<number>;
+type EboId = Brand<number>;
 
 export class Gala {
     readonly canvas: HTMLCanvasElement;
