@@ -52,6 +52,12 @@ export class Gala {
         return id;
     }
 
+    removeVbo(id: VboId) {
+        const gl = this.gl;
+        gl.deleteBuffer(this.vertices.buffer[id] || null);
+        this.vertices.free.push(id);
+    }
+
     createEbo(data: Uint8Array): EboId {
         const gl = this.gl;
         const buffer = gl.createBuffer();
@@ -69,6 +75,12 @@ export class Gala {
             this.indices.length[id] = data.length;
         }
         return id;
+    }
+
+    removeEbo(id: EboId) {
+        const gl = this.gl;
+        gl.deleteBuffer(this.indices.buffer[id] || null);
+        this.indices.free.push(id);
     }
 };
 
