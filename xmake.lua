@@ -4,17 +4,19 @@ add_rules("mode.debug", "mode.release")
 set_warnings("all", "error")
 set_languages("c11")
 
-target("glad")
+target("glad", function()
     set_kind("static")
     add_files("src/glad/**.c")
+end)
 
-target("gala")
+target("gala", function()
     set_kind("static")
     add_includedirs("src/")
     add_headerfiles("src/estd/**.h")
     add_files("src/engine/**.c")
+end)
 
-target("gala-glfw")
+target("gala-glfw", function()
     set_kind("binary")
     add_files("src/windowing/glfw/**.c")
     add_includedirs("src/")
@@ -24,6 +26,7 @@ target("gala-glfw")
     add_packages("glfw")
     add_defines("GLFW_INCLUDE_NONE")
     set_rundir("$(projectdir)")
+end)
 
 --
 -- If you want to known more usage about xmake, please see https://xmake.io
