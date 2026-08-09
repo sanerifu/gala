@@ -279,44 +279,45 @@ typedef enum GalaProgramName {
     GALA_PROGRAM_NAME_QUAD
 } GalaProgramName;
 
-static GalaProgram programs[] = {
+static GalaAttribute const mesh_attributes[] = {
+    {
+        .name = ESTD_LITERAL("aPosition"),
+        .type = GALA_ATTRIBUTE_TYPE_FLOAT,
+        .element_type = GALA_TYPE_F32,
+        .count = 3,
+    },
+    {
+        .name = ESTD_LITERAL("aTexcoord"),
+        .type = GALA_ATTRIBUTE_TYPE_FLOAT,
+        .element_type = GALA_TYPE_F32,
+        .count = 2,
+    },
+    {
+        .name = ESTD_LITERAL("aNormal"),
+        .type = GALA_ATTRIBUTE_TYPE_NORMALIZED,
+        .element_type = GALA_TYPE_U16,
+        .count = 2,
+    },
+    {
+        .name = ESTD_LITERAL("aTangent"),
+        .type = GALA_ATTRIBUTE_TYPE_INTEGER,
+        .element_type = GALA_TYPE_U16,
+        .count = 2,
+    },
+    {
+        .name = ESTD_LITERAL("aMeshId"),
+        .type = GALA_ATTRIBUTE_TYPE_INTEGER,
+        .element_type = GALA_TYPE_U32,
+        .count = 1,
+    },
+};
+
+static GalaProgram const programs[] = {
     [GALA_PROGRAM_NAME_MESH] =
         (GalaProgram){
             .name = ESTD_LITERAL("mesh"),
-            .attribute_count = 5,
-            .attributes =
-                (GalaAttribute[]){
-                    {
-                        .name = ESTD_LITERAL("aPosition"),
-                        .type = GALA_ATTRIBUTE_TYPE_FLOAT,
-                        .element_type = GALA_TYPE_F32,
-                        .count = 3,
-                    },
-                    {
-                        .name = ESTD_LITERAL("aTexcoord"),
-                        .type = GALA_ATTRIBUTE_TYPE_FLOAT,
-                        .element_type = GALA_TYPE_F32,
-                        .count = 2,
-                    },
-                    {
-                        .name = ESTD_LITERAL("aNormal"),
-                        .type = GALA_ATTRIBUTE_TYPE_NORMALIZED,
-                        .element_type = GALA_TYPE_U16,
-                        .count = 2,
-                    },
-                    {
-                        .name = ESTD_LITERAL("aTangent"),
-                        .type = GALA_ATTRIBUTE_TYPE_INTEGER,
-                        .element_type = GALA_TYPE_U16,
-                        .count = 2,
-                    },
-                    {
-                        .name = ESTD_LITERAL("aMeshId"),
-                        .type = GALA_ATTRIBUTE_TYPE_INTEGER,
-                        .element_type = GALA_TYPE_U32,
-                        .count = 1,
-                    },
-                },
+            .attribute_count = sizeof(mesh_attributes) / sizeof(mesh_attributes[0]),
+            .attributes = mesh_attributes,
         },
 
     [GALA_PROGRAM_NAME_QUAD] = (GalaProgram){
