@@ -22,5 +22,6 @@ typedef struct GalaEngineConfig {
 typedef struct GalaEngine GalaEngine;
 
 GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdArena** allocator);
+GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator);
 
 #endif

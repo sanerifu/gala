@@ -8,7 +8,26 @@
 #include "glresult.h"
 #include "resource.h"
 
+typedef enum GalaCommandType {
+    GALA_COMMAND_TYPE_CREATE_PROGRAM
+} GalaCommandType;
+
+typedef struct GalaCommandCreateProgram {
+    size_t program;
+} GalaCommandCreateProgram;
+
+typedef struct GalaCommand {
+    GalaCommandType type;
+    union {
+        GalaCommandCreateProgram create_program;
+    };
+} GalaCommand;
+
 struct GalaEngine {
+    size_t command_queue_count;
+    size_t command_queue_capacity;
+    GalaCommand* command_queue;
+
     size_t program_count;
     GalaProgram* programs;
 
@@ -327,10 +346,32 @@ static GalaProgram const programs[] = {
     },
 };
 
+static GalaResult galaPushCommand(GalaEngine* self, GalaCommand command) {
+    if (self->command_queue_count == self->command_queue_capacity) {
+        GalaCommand* new_queue =
+            realloc(self->command_queue, self->command_queue_capacity * 2 * sizeof(self->command_queue[0]));
+        if (new_queue == NULL) {
+            ESTD_THROW(GALA_RESULT_OUT_OF_MEMORY, "Could not resize command queue");
+        }
+        self->command_queue = new_queue;
+        self->command_queue_capacity *= 2;
+    }
+    self->command_queue[self->command_queue_count] = command;
+    self->command_queue_count += 1;
+    return GALA_SUCCESS;
+}
+
 GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdArena** allocator) {
     GalaEngine* self;
     ESTD_BUBBLE_T(GalaResult, estdArenaNew(&self, allocator), "Could not allocate engine");
     ESTD_DEBUG("Engine allocated");
+
+    self->command_queue_count = 0;
+    self->command_queue_capacity = 1024;
+    self->command_queue = calloc(self->command_queue_capacity, sizeof(self->command_queue[0]));
+    if (self->command_queue == NULL) {
+        ESTD_THROW(GALA_RESULT_OUT_OF_MEMORY, "Could not allocate command queue");
+    }
 
     self->program_count = sizeof(programs) / sizeof(programs[0]);
     ESTD_BUBBLE_T(
@@ -341,7 +382,15 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
     );
     memcpy(self->programs, programs, sizeof(programs));
     for (size_t p = 0; p < self->program_count; p++) {
-        ESTD_BUBBLE_T(GalaResult, galaCreateProgram(&self->programs[p], allocator), "Could not create program");
+        galaPushCommand(
+            self,
+            (GalaCommand){
+                .type = GALA_COMMAND_TYPE_CREATE_PROGRAM,
+                .create_program = (GalaCommandCreateProgram){
+                    .program = p,
+                },
+            }
+        );
     }
     ESTD_DEBUG("Programs created");
 
@@ -373,5 +422,21 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
     ESTD_DEBUG("Textures created");
 
     *o_self = self;
+    return GALA_SUCCESS;
+}
+
+GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator) {
+    for (size_t c = 0; c < self->command_queue_count; c++) {
+        switch (self->command_queue[c].type) {
+            case GALA_COMMAND_TYPE_CREATE_PROGRAM:
+                ESTD_BUBBLE_T(
+                    GalaResult,
+                    galaCreateProgram(&self->programs[self->command_queue[c].create_program.program], allocator),
+                    "Could not create program"
+                );
+                break;
+        }
+    }
+    self->command_queue_count = 0;
     return GALA_SUCCESS;
 }
