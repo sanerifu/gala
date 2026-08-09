@@ -1,8 +1,29 @@
+add_requires("glfw 3.4")
 add_rules("mode.debug", "mode.release")
 
+set_warnings("all", "error")
+set_languages("c11")
+
+target("glad")
+    set_kind("static")
+    add_files("src/glad/**.c")
+
 target("gala")
+    set_kind("static")
+    add_includedirs("src/")
+    add_headerfiles("src/estd/**.h")
+    add_files("src/engine/**.c")
+
+target("gala-glfw")
     set_kind("binary")
-    add_files("src/*.c")
+    add_files("src/windowing/glfw/**.c")
+    add_includedirs("src/")
+    add_headerfiles("src/estd/**.h")
+    add_deps("glad")
+    add_deps("gala")
+    add_packages("glfw")
+    add_defines("GLFW_INCLUDE_NONE")
+    set_rundir("$(projectdir)")
 
 --
 -- If you want to known more usage about xmake, please see https://xmake.io

@@ -1,0 +1,3 @@
+[submodule "src/estd"]
+	path = src/estd
+	url = https://github.com/sanerifu/estd.git
