@@ -18,6 +18,9 @@ typedef struct GalaCommandCreateProgram {
 
 typedef struct GalaCommand {
     GalaCommandType type;
+    char const* file;
+    char const* func;
+    int line;
     union {
         GalaCommandCreateProgram create_program;
     };
@@ -361,6 +364,9 @@ static GalaResult galaPushCommand(GalaEngine* self, GalaCommand command) {
     return GALA_SUCCESS;
 }
 
+#define galaPushCommand(self, ...) \
+    galaPushCommand(self, (GalaCommand){.file = __FILE__, .func = __func__, .line = __LINE__, ##__VA_ARGS__})
+
 GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdArena** allocator) {
     GalaEngine* self;
     ESTD_BUBBLE_T(GalaResult, estdArenaNew(&self, allocator), "Could not allocate engine");
@@ -384,12 +390,10 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
     for (size_t p = 0; p < self->program_count; p++) {
         galaPushCommand(
             self,
-            (GalaCommand){
-                .type = GALA_COMMAND_TYPE_CREATE_PROGRAM,
-                .create_program = (GalaCommandCreateProgram){
-                    .program = p,
-                },
-            }
+            .type = GALA_COMMAND_TYPE_CREATE_PROGRAM,
+            .create_program = (GalaCommandCreateProgram){
+                .program = p,
+            },
         );
     }
     ESTD_DEBUG("Programs created");
@@ -427,12 +431,16 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
 
 GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator) {
     for (size_t c = 0; c < self->command_queue_count; c++) {
-        switch (self->command_queue[c].type) {
+        GalaCommand const* command = &self->command_queue[c];
+        switch (command->type) {
             case GALA_COMMAND_TYPE_CREATE_PROGRAM:
                 ESTD_BUBBLE_T(
                     GalaResult,
-                    galaCreateProgram(&self->programs[self->command_queue[c].create_program.program], allocator),
-                    "Could not create program"
+                    galaCreateProgram(&self->programs[command->create_program.program], allocator),
+                    "Could not process command (pushed from %s @ %s:%d)",
+                    command->func,
+                    command->file,
+                    command->line
                 );
                 break;
         }
