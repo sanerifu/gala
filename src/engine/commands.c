@@ -273,7 +273,7 @@ static GalaResult galaDrawArrays(int start, int count) {
 }
 
 GalaResult galaProcessCommand(GalaCommand* command) {
-    EstdArena* arena;
+    EstdArena* arena = NULL;
     switch (command->type) {
         case GALA_COMMAND_TYPE_CREATE_PROGRAM:
             ESTD_BUBBLE(galaCreateProgram(command->create_program.program, &arena), "creating program");
