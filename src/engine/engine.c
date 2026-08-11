@@ -8,10 +8,33 @@
 #include "glresult.h"
 #include "resource.h"
 
-GALA_ENUM(GalaCommandType){GALA_COMMAND_TYPE_CREATE_PROGRAM};
+GALA_ENUM(GalaCommandType){
+    GALA_COMMAND_TYPE_CREATE_PROGRAM,
+    GALA_COMMAND_TYPE_CREATE_VERTEX_ARRAY,
+    GALA_COMMAND_TYPE_BIND_PIPELINE,
+    GALA_COMMAND_TYPE_BIND_VERTEX_ARRAY,
+    GALA_COMMAND_TYPE_DRAW_ARRAYS
+};
 
 GALA_STRUCT(GalaCommandCreateProgram) {
     GalaProgram* program;
+};
+
+GALA_STRUCT(GalaCommandCreateVertexArray) {
+    GalaVertexArray* vertex_array;
+};
+
+GALA_STRUCT(GalaCommandBindPipeline) {
+    GalaPipeline* pipeline;
+};
+
+GALA_STRUCT(GalaCommandBindVertexArray) {
+    GalaVertexArray* vertex_array;
+};
+
+GALA_STRUCT(GalaCommandDrawArrays) {
+    int start;
+    int count;
 };
 
 GALA_STRUCT(GalaCommand) {
@@ -21,6 +44,10 @@ GALA_STRUCT(GalaCommand) {
     int line;
     union {
         GalaCommandCreateProgram create_program;
+        GalaCommandCreateVertexArray create_vertex_array;
+        GalaCommandBindPipeline bind_pipeline;
+        GalaCommandBindVertexArray bind_vertex_array;
+        GalaCommandDrawArrays draw_arrays;
     };
 };
 
@@ -31,6 +58,9 @@ GALA_STRUCT(GalaEngine) {
 
     size_t program_count;
     GalaProgram* programs;
+
+    size_t pipeline_count;
+    GalaPipeline* pipelines;
 
     size_t vertex_array_count;
     GalaVertexArray* vertex_arrays;
@@ -294,10 +324,9 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
     return GALA_SUCCESS;
 }
 
-typedef enum GalaProgramName {
-    GALA_PROGRAM_NAME_MESH,
-    GALA_PROGRAM_NAME_QUAD
-} GalaProgramName;
+GALA_ENUM(GalaProgramName){GALA_PROGRAM_NAME_MESH, GALA_PROGRAM_NAME_QUAD};
+
+GALA_ENUM(GalaPipelineName){GALA_PIPELINE_NAME_MESH, GALA_PIPELINE_NAME_QUAD};
 
 static GalaAttribute const mesh_attributes[] = {
     {
@@ -396,12 +425,36 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
     }
     ESTD_DEBUG("Programs created");
 
-    self->vertex_array_count = config.model_count;
+    self->pipeline_count = 2;
+    ESTD_BUBBLE_T(
+        GalaResult,
+        estdArenaArray(&self->pipelines, allocator, self->pipeline_count),
+        "Could not allocate %zu pipelines",
+        self->pipeline_count
+    );
+    self->pipelines[GALA_PIPELINE_NAME_MESH] = (GalaPipeline){
+        .program = &self->programs[GALA_PROGRAM_NAME_MESH],
+    };
+    self->pipelines[GALA_PIPELINE_NAME_QUAD] = (GalaPipeline){
+        .program = &self->programs[GALA_PROGRAM_NAME_QUAD],
+    };
+
+    self->vertex_array_count = 1;
     ESTD_BUBBLE_T(
         GalaResult,
         estdArenaArray(&self->vertex_arrays, allocator, self->vertex_array_count),
         "Could not allocate %zu vertex arrays",
         self->vertex_array_count
+    );
+    self->vertex_arrays[0] = (GalaVertexArray){
+        .name = ESTD_LITERAL("TestVao"),
+        .attribute_count = 0,
+        .attributes = NULL,
+    };
+    galaPushCommand(
+        self,
+        .type = GALA_COMMAND_TYPE_CREATE_VERTEX_ARRAY,
+        .create_vertex_array = {.vertex_array = &self->vertex_arrays[0]}
     );
     ESTD_DEBUG("VAOs created");
 
@@ -427,7 +480,60 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
     return GALA_SUCCESS;
 }
 
+// TODO: Add buffers
+static GalaResult galaCreateVertexArray(GalaVertexArray* vertex_array) {
+    GALA_GL(glGenVertexArrays(1, &vertex_array->gl), "Could not generate vertex array");
+    GALA_GL(glBindVertexArray(vertex_array->gl), "Could not bind vertex array");
+    for (size_t a = 0; a < vertex_array->attribute_count; a++) {
+        GalaAttribute const* attr = &vertex_array->attributes[a];
+        GALA_GL(glEnableVertexAttribArray(a), "Could not enable attribute %zu", a);
+        GLboolean normalized = GL_FALSE;
+        // TODO: fix strides by summing
+        switch (attr->type) {
+            case GALA_ATTRIBUTE_TYPE_INTEGER:
+                glVertexAttribIPointer(a, attr->count, attr->element_type, 0, NULL);
+                break;
+            case GALA_ATTRIBUTE_TYPE_NORMALIZED:
+                normalized = GL_TRUE;
+            case GALA_ATTRIBUTE_TYPE_FLOAT:
+                glVertexAttribPointer(a, attr->count, attr->element_type, normalized, 0, NULL);
+                break;
+        }
+    }
+    GALA_GL(glBindVertexArray(0), "Could not unbind vertex array");
+    return GALA_SUCCESS;
+}
+
+static GalaResult galaBindPipeline(GalaPipeline* pipeline) {
+    GALA_GL(glUseProgram(pipeline->program->gl), "Could not use program");
+    return GALA_SUCCESS;
+}
+
+static GalaResult galaBindVertexArray(GalaVertexArray* vertex_array) {
+    GALA_GL(glBindVertexArray(vertex_array->gl), "Could not bind vertex array");
+    return GALA_SUCCESS;
+}
+
+static GalaResult galaDrawArrays(int start, int count) {
+    GALA_GL(glDrawArrays(GL_TRIANGLES, start, count), "Could not draw arrays");
+    return GALA_SUCCESS;
+}
+
 GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator) {
+    galaPushCommand(
+        self,
+        .type = GALA_COMMAND_TYPE_BIND_PIPELINE,
+        .bind_pipeline = {.pipeline = &self->pipelines[GALA_PIPELINE_NAME_QUAD]}
+    );
+
+    galaPushCommand(
+        self,
+        .type = GALA_COMMAND_TYPE_BIND_VERTEX_ARRAY,
+        .bind_vertex_array = {.vertex_array = &self->vertex_arrays[0]}
+    );
+
+    galaPushCommand(self, .type = GALA_COMMAND_TYPE_DRAW_ARRAYS, .draw_arrays = {.start = 0, .count = 3});
+
     for (size_t c = 0; c < self->command_queue_count; c++) {
         GalaCommand const* command = &self->command_queue[c];
         switch (command->type) {
@@ -436,6 +542,46 @@ GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator) {
                     GalaResult,
                     galaCreateProgram(command->create_program.program, allocator),
                     "Could not process command (pushed from %s @ %s:%d)",
+                    command->func,
+                    command->file,
+                    command->line
+                );
+                break;
+            case GALA_COMMAND_TYPE_CREATE_VERTEX_ARRAY:
+                ESTD_BUBBLE_T(
+                    GalaResult,
+                    galaCreateVertexArray(command->create_vertex_array.vertex_array),
+                    "Could not process command (pushed from %s @ %s:%d)",
+                    command->func,
+                    command->file,
+                    command->line
+                );
+                break;
+            case GALA_COMMAND_TYPE_BIND_PIPELINE:
+                ESTD_BUBBLE_T(
+                    GalaResult,
+                    galaBindPipeline(command->bind_pipeline.pipeline),
+                    "Could not bind pipeline (pushed from %s @ %s:%d)",
+                    command->func,
+                    command->file,
+                    command->line
+                );
+                break;
+            case GALA_COMMAND_TYPE_BIND_VERTEX_ARRAY:
+                ESTD_BUBBLE_T(
+                    GalaResult,
+                    galaBindVertexArray(command->bind_vertex_array.vertex_array),
+                    "Could not process command (pushed from %s @ %s:%d)",
+                    command->func,
+                    command->file,
+                    command->line
+                );
+                break;
+            case GALA_COMMAND_TYPE_DRAW_ARRAYS:
+                ESTD_BUBBLE_T(
+                    GalaResult,
+                    galaDrawArrays(command->draw_arrays.start, command->draw_arrays.count),
+                    "Could not draw arrays (pushed from %s @ %s:%d)",
                     command->func,
                     command->file,
                     command->line

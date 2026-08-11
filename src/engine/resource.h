@@ -102,6 +102,10 @@ GALA_STRUCT(GalaProgram) {
     uint32_t gl;
 };
 
+GALA_STRUCT(GalaPipeline) {
+    GalaProgram* program;
+};
+
 GALA_STRUCT(GalaBuffer) {
     GalaBufferType type;
     size_t size;
