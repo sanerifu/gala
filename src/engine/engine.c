@@ -9,6 +9,8 @@
 #include "glresult.h"
 #include "resource.h"
 
+ESTD_RESULT_DATA(___GALA_RESULTS);
+
 GALA_STRUCT(GalaEngine) {
     size_t command_queue_count;
     size_t command_queue_capacity;
@@ -102,7 +104,7 @@ static GalaResult galaPushCommand(GalaEngine* self, GalaCommand command) {
 
 GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdArena** allocator) {
     GalaEngine* self;
-    ESTD_BUBBLE_T(GalaResult, estdArenaNew(&self, allocator), "Could not allocate engine");
+    ESTD_BUBBLE(estdArenaNew(&self, allocator), "Could not allocate engine");
     ESTD_DEBUG("Engine allocated");
 
     self->command_queue_count = 0;
@@ -113,8 +115,7 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
     }
 
     self->program_count = sizeof(programs) / sizeof(programs[0]);
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         estdArenaArray(&self->programs, allocator, self->program_count),
         "Could not allocate %zu programs",
         self->program_count
@@ -132,8 +133,7 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
     ESTD_DEBUG("Programs created");
 
     self->pipeline_count = 2;
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         estdArenaArray(&self->pipelines, allocator, self->pipeline_count),
         "Could not allocate %zu pipelines",
         self->pipeline_count
@@ -146,8 +146,7 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
     };
 
     self->vertex_array_count = 1 + config.model_count;
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         estdArenaArray(&self->vertex_arrays, allocator, self->vertex_array_count),
         "Could not allocate %zu vertex arrays",
         self->vertex_array_count
@@ -165,8 +164,7 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
     ESTD_DEBUG("VAOs created");
 
     self->buffer_count = config.model_count * 3;
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         estdArenaArray(&self->buffers, allocator, self->buffer_count),
         "Could not allocate %zu buffers",
         self->buffer_count
@@ -174,8 +172,7 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
     ESTD_DEBUG("Buffers created");
 
     self->texture_count = config.model_count * 4;
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         estdArenaArray(&self->textures, allocator, self->texture_count),
         "Could not allocate %zu textures",
         self->texture_count
@@ -202,8 +199,7 @@ GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator) {
     galaPushCommand(self, .type = GALA_COMMAND_TYPE_DRAW_ARRAYS, .draw_arrays = {.start = 0, .count = 3});
 
     for (size_t c = 0; c < self->command_queue_count; c++) {
-        ESTD_BUBBLE_T(
-            GalaResult,
+        ESTD_BUBBLE(
             galaProcessCommand(&self->command_queue[c]),
             "Could not process command (pushed in %s @ %s:%d)",
             self->command_queue[c].func,

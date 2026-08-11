@@ -123,15 +123,13 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
     GalaProgram program = *io_program;
     ESTD_CLEAN(estdArenaDestroy) EstdArena* arena = NULL;
     EstdString filename;
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         estdStringFormat(&filename, &arena, "shaders/%" PRIestr ".glsl", ESTD_STRING_ARG(program.name)),
         "Could not create filename for shader %" PRIestr,
         ESTD_STRING_ARG(program.name)
     );
     ESTD_CLEAN(fclose) FILE* file = fopen(filename.data, "rb");
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         estdReadFile(&program.source, allocator, file),
         "Could not read program %" PRIestr " file %" PRIestr,
         ESTD_STRING_ARG(program.name),
@@ -139,8 +137,7 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
     );
 
     EstdStringBuilder* vertex_source_builder = NULL;
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         estdStringBuilderAppend(
             &vertex_source_builder,
             ESTD_LITERAL(
@@ -157,16 +154,14 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
     for (size_t a = 0; a < program.attribute_count; a++) {
         GalaAttribute const* attr = &program.attributes[a];
         EstdString type_specifier;
-        ESTD_BUBBLE_T(
-            GalaResult,
+        ESTD_BUBBLE(
             galaGetAttributeType(&type_specifier, attr),
             "Could not get attribute type of attribute %" PRIestr " in program %" PRIestr,
             ESTD_STRING_ARG(attr->name),
             ESTD_STRING_ARG(program.name)
         );
 
-        ESTD_BUBBLE_T(
-            GalaResult,
+        ESTD_BUBBLE(
             estdStringBuilderAppendf(
                 &vertex_source_builder,
                 &arena,
@@ -181,8 +176,7 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
         );
     }
 
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         estdStringBuilderAppendf(
             &vertex_source_builder,
             &arena,
@@ -195,8 +189,7 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
     );
 
     EstdString vertex_source;
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         estdStringBuilderBuild(&vertex_source, &vertex_source_builder, &arena),
         "Could not build vertex shader source for %" PRIestr,
         ESTD_STRING_ARG(program.name)
@@ -204,8 +197,7 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
     ESTD_DEBUG("Vertex: %" PRIestr, ESTD_STRING_ARG(vertex_source));
 
     EstdStringBuilder* fragment_source_builder = NULL;
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         estdStringBuilderAppendf(
             &fragment_source_builder,
             &arena,
@@ -221,8 +213,7 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
     );
 
     EstdString fragment_source;
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         estdStringBuilderBuild(&fragment_source, &fragment_source_builder, &arena),
         "Could not build fragment shader source for %" PRIestr,
         ESTD_STRING_ARG(program.name)
@@ -230,24 +221,21 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
     ESTD_DEBUG("Fragment: %" PRIestr, ESTD_STRING_ARG(fragment_source));
 
     GLuint vertex_shader, fragment_shader;
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         galaMakeShader(&vertex_shader, vertex_source, GL_VERTEX_SHADER),
         "Could not create vertex shader for program %" PRIestr,
         ESTD_STRING_ARG(program.name)
     );
     ESTD_DEBUG("Created vertex shader for program %" PRIestr, ESTD_STRING_ARG(program.name));
 
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         galaMakeShader(&fragment_shader, fragment_source, GL_FRAGMENT_SHADER),
         "Could not create fragment shader for program %" PRIestr,
         ESTD_STRING_ARG(program.name)
     );
     ESTD_DEBUG("Created fragment shader for program %" PRIestr, ESTD_STRING_ARG(program.name));
 
-    ESTD_BUBBLE_T(
-        GalaResult,
+    ESTD_BUBBLE(
         galaMakeProgram(&program.gl, vertex_shader, fragment_shader),
         "Could not create program %" PRIestr,
         ESTD_STRING_ARG(program.name)
@@ -301,32 +289,22 @@ GalaResult galaProcessCommand(GalaCommand* command) {
     EstdArena* arena;
     switch (command->type) {
         case GALA_COMMAND_TYPE_CREATE_PROGRAM:
-            ESTD_BUBBLE_T(
-                GalaResult,
-                galaCreateProgram(command->create_program.program, &arena),
-                "Could not create program"
-            );
+            ESTD_BUBBLE(galaCreateProgram(command->create_program.program, &arena), "Could not create program");
             break;
         case GALA_COMMAND_TYPE_CREATE_VERTEX_ARRAY:
-            ESTD_BUBBLE_T(
-                GalaResult,
+            ESTD_BUBBLE(
                 galaCreateVertexArray(command->create_vertex_array.vertex_array),
                 "Could not create vertex array"
             );
             break;
         case GALA_COMMAND_TYPE_BIND_PIPELINE:
-            ESTD_BUBBLE_T(GalaResult, galaBindPipeline(command->bind_pipeline.pipeline), "Could not bind pipeline");
+            ESTD_BUBBLE(galaBindPipeline(command->bind_pipeline.pipeline), "Could not bind pipeline");
             break;
         case GALA_COMMAND_TYPE_BIND_VERTEX_ARRAY:
-            ESTD_BUBBLE_T(
-                GalaResult,
-                galaBindVertexArray(command->bind_vertex_array.vertex_array),
-                "Could not bind vertex array"
-            );
+            ESTD_BUBBLE(galaBindVertexArray(command->bind_vertex_array.vertex_array), "Could not bind vertex array");
             break;
         case GALA_COMMAND_TYPE_DRAW_ARRAYS:
-            ESTD_BUBBLE_T(
-                GalaResult,
+            ESTD_BUBBLE(
                 galaDrawArrays(command->draw_arrays.start, command->draw_arrays.count),
                 "Could not draw arrays"
             );
