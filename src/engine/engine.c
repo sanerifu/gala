@@ -192,7 +192,7 @@ GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator) {
             .type = GALA_COMMAND_TYPE_BIND_PIPELINE,
             .bind_pipeline = {.pipeline = &self->pipelines[GALA_PIPELINE_NAME_QUAD]}
         ),
-        "Could not push bind pipeline command"
+        "pushing bind pipeline command"
     );
 
     ESTD_BUBBLE(
@@ -201,18 +201,18 @@ GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator) {
             .type = GALA_COMMAND_TYPE_BIND_VERTEX_ARRAY,
             .bind_vertex_array = {.vertex_array = &self->vertex_arrays[0]}
         ),
-        "Could not push bind vertex array command"
+        "pushing bind vertex array command"
     );
 
     ESTD_BUBBLE(
         galaPushCommand(self, .type = GALA_COMMAND_TYPE_DRAW_ARRAYS, .draw_arrays = {.start = 0, .count = 3}),
-        "Could not push draw triangle command"
+        "pushing draw triangle command"
     );
 
     for (size_t c = 0; c < self->command_queue_count; c++) {
         ESTD_BUBBLE(
             galaProcessCommand(&self->command_queue[c]),
-            "Could not process command (pushed in %s @ %s:%d)",
+            "processing command (pushed in %s @ %s:%d)",
             self->command_queue[c].func,
             self->command_queue[c].file,
             self->command_queue[c].line
