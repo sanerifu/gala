@@ -147,6 +147,13 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
         .program = &self->programs[GALA_PROGRAM_NAME_QUAD],
     };
 
+    self->buffer_count = config.model_count * 3;
+    ESTD_OP(
+        estdArenaArray(&self->buffers, allocator, self->buffer_count),
+        "allocating %zu buffers",
+        self->buffer_count
+    );
+
     self->vertex_array_count = 1 + config.model_count;
     ESTD_OP(
         estdArenaArray(&self->vertex_arrays, allocator, self->vertex_array_count),
@@ -165,13 +172,6 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
             .create_vertex_array = {.vertex_array = &self->vertex_arrays[0]}
         ),
         "pushing empty vertex array creation command"
-    );
-
-    self->buffer_count = config.model_count * 3;
-    ESTD_OP(
-        estdArenaArray(&self->buffers, allocator, self->buffer_count),
-        "allocating %zu buffers",
-        self->buffer_count
     );
 
     self->texture_count = config.model_count * 4;
