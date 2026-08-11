@@ -8,15 +8,13 @@
 #include "glresult.h"
 #include "resource.h"
 
-typedef enum GalaCommandType {
-    GALA_COMMAND_TYPE_CREATE_PROGRAM
-} GalaCommandType;
+GALA_ENUM(GalaCommandType){GALA_COMMAND_TYPE_CREATE_PROGRAM};
 
-typedef struct GalaCommandCreateProgram {
+GALA_STRUCT(GalaCommandCreateProgram) {
     GalaProgram* program;
-} GalaCommandCreateProgram;
+};
 
-typedef struct GalaCommand {
+GALA_STRUCT(GalaCommand) {
     GalaCommandType type;
     char const* file;
     char const* func;
@@ -24,9 +22,9 @@ typedef struct GalaCommand {
     union {
         GalaCommandCreateProgram create_program;
     };
-} GalaCommand;
+};
 
-struct GalaEngine {
+GALA_STRUCT(GalaEngine) {
     size_t command_queue_count;
     size_t command_queue_capacity;
     GalaCommand* command_queue;

@@ -5,7 +5,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef enum GalaResult {
+#include "common.h"
+
+GALA_ENUM(GalaResult){
     GALA_SUCCESS,
     GALA_RESULT_OUT_OF_MEMORY = ESTD_OUT_OF_MEMORY,
     GALA_RESULT_SHADER_NOT_FOUND,
@@ -13,11 +15,11 @@ typedef enum GalaResult {
     GALA_RESULT_OPENGL_ERROR,
     GALA_RESULT_SHADER_COMPILATION_ERROR,
     GALA_RESULT_PROGRAM_LINKAGE_ERROR
-} GalaResult;
+};
 
-typedef struct GalaEngineConfig {
+GALA_STRUCT(GalaEngineConfig) {
     size_t model_count;
-} GalaEngineConfig;
+};
 
 typedef struct GalaEngine GalaEngine;
 
