@@ -1,9 +1,8 @@
+#define ESTD_ALL_IMPLEMENTATION
 #include <GLFW/glfw3.h>
 #include <engine/engine.h>
 #include <estd/log.h>
 #include <glad/glad.h>
-
-#define ESTD_ALL_IMPLEMENTATION
 
 #include <estd/arena.h>
 #include <estd/str.h>
