@@ -13,7 +13,7 @@ typedef enum GalaCommandType {
 } GalaCommandType;
 
 typedef struct GalaCommandCreateProgram {
-    size_t program;
+    GalaProgram* program;
 } GalaCommandCreateProgram;
 
 typedef struct GalaCommand {
@@ -392,7 +392,7 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
             self,
             .type = GALA_COMMAND_TYPE_CREATE_PROGRAM,
             .create_program = (GalaCommandCreateProgram){
-                .program = p,
+                .program = &self->programs[p],
             },
         );
     }
@@ -436,7 +436,7 @@ GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator) {
             case GALA_COMMAND_TYPE_CREATE_PROGRAM:
                 ESTD_BUBBLE_T(
                     GalaResult,
-                    galaCreateProgram(&self->programs[command->create_program.program], allocator),
+                    galaCreateProgram(command->create_program.program, allocator),
                     "Could not process command (pushed from %s @ %s:%d)",
                     command->func,
                     command->file,
