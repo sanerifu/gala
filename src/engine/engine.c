@@ -125,7 +125,7 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
                 self,
                 .type = GALA_COMMAND_TYPE_CREATE_PROGRAM,
                 .create_program =
-                    (GalaCommandCreateProgram){
+                    {
                         .program = &self->programs[p],
                     },
             ),
