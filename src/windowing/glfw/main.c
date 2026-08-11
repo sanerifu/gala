@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
 
     EstdArena* arena = NULL;
     GalaEngine* engine;
-    ESTD_BUBBLE_INT(
+    ESTD_OP_INT(
         galaCreateEngine(
             &engine,
             (GalaEngineConfig){
@@ -37,14 +37,13 @@ int main(int argc, char** argv) {
             },
             &arena
         ),
-        "Could not initialize engine"
+        "engine initialization"
     );
-    ESTD_DEBUG("Engine created");
 
     while (!glfwWindowShouldClose(window)) {
         glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        ESTD_BUBBLE_INT(galaUpdateEngine(engine, &arena), "Could not update engine");
+        ESTD_BUBBLE_INT(galaUpdateEngine(engine, &arena), "updating engine");
         glfwPollEvents();
         glfwSwapBuffers(window);
     }

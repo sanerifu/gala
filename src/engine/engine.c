@@ -2,7 +2,6 @@
 
 #include <estd/result.h>
 #include <estd/string_builder.h>
-#include <glad/glad.h>
 #include <stdlib.h>
 
 #include "commands.h"
@@ -89,7 +88,7 @@ static GalaResult galaPushCommand(GalaEngine* self, GalaCommand command) {
         GalaCommand* new_queue =
             realloc(self->command_queue, self->command_queue_capacity * 2 * sizeof(self->command_queue[0]));
         if (new_queue == NULL) {
-            ESTD_THROW(GALA_RESULT_OUT_OF_MEMORY, "Could not resize command queue");
+            ESTD_THROW(GALA_RESULT_OUT_OF_MEMORY, "command queue resize");
         }
         self->command_queue = new_queue;
         self->command_queue_capacity *= 2;
@@ -104,38 +103,41 @@ static GalaResult galaPushCommand(GalaEngine* self, GalaCommand command) {
 
 GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdArena** allocator) {
     GalaEngine* self;
-    ESTD_BUBBLE(estdArenaNew(&self, allocator), "Could not allocate engine");
-    ESTD_DEBUG("Engine allocated");
+    ESTD_OP(estdArenaNew(&self, allocator), "engine allocation");
 
     self->command_queue_count = 0;
     self->command_queue_capacity = 1024;
     self->command_queue = calloc(self->command_queue_capacity, sizeof(self->command_queue[0]));
     if (self->command_queue == NULL) {
-        ESTD_THROW(GALA_RESULT_OUT_OF_MEMORY, "Could not allocate command queue");
+        ESTD_THROW(GALA_RESULT_OUT_OF_MEMORY, "command queue allocation");
     }
 
     self->program_count = sizeof(programs) / sizeof(programs[0]);
-    ESTD_BUBBLE(
+    ESTD_OP(
         estdArenaArray(&self->programs, allocator, self->program_count),
-        "Could not allocate %zu programs",
+        "allocating %zu programs",
         self->program_count
     );
     memcpy(self->programs, programs, sizeof(programs));
     for (size_t p = 0; p < self->program_count; p++) {
-        galaPushCommand(
-            self,
-            .type = GALA_COMMAND_TYPE_CREATE_PROGRAM,
-            .create_program = (GalaCommandCreateProgram){
-                .program = &self->programs[p],
-            },
+        ESTD_OP(
+            galaPushCommand(
+                self,
+                .type = GALA_COMMAND_TYPE_CREATE_PROGRAM,
+                .create_program =
+                    (GalaCommandCreateProgram){
+                        .program = &self->programs[p],
+                    },
+            ),
+            "pushing creation of program %" PRIestr,
+            ESTD_STRING_ARG(self->programs[p].name)
         );
     }
-    ESTD_DEBUG("Programs created");
 
     self->pipeline_count = 2;
-    ESTD_BUBBLE(
+    ESTD_OP(
         estdArenaArray(&self->pipelines, allocator, self->pipeline_count),
-        "Could not allocate %zu pipelines",
+        "allocating %zu pipelines",
         self->pipeline_count
     );
     self->pipelines[GALA_PIPELINE_NAME_MESH] = (GalaPipeline){
@@ -146,9 +148,9 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
     };
 
     self->vertex_array_count = 1 + config.model_count;
-    ESTD_BUBBLE(
+    ESTD_OP(
         estdArenaArray(&self->vertex_arrays, allocator, self->vertex_array_count),
-        "Could not allocate %zu vertex arrays",
+        "allocating %zu vertex arrays",
         self->vertex_array_count
     );
     self->vertex_arrays[0] = (GalaVertexArray){
@@ -156,47 +158,56 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
         .attribute_count = 0,
         .attributes = NULL,
     };
-    galaPushCommand(
-        self,
-        .type = GALA_COMMAND_TYPE_CREATE_VERTEX_ARRAY,
-        .create_vertex_array = {.vertex_array = &self->vertex_arrays[0]}
+    ESTD_OP(
+        galaPushCommand(
+            self,
+            .type = GALA_COMMAND_TYPE_CREATE_VERTEX_ARRAY,
+            .create_vertex_array = {.vertex_array = &self->vertex_arrays[0]}
+        ),
+        "pushing empty vertex array creation command"
     );
-    ESTD_DEBUG("VAOs created");
 
     self->buffer_count = config.model_count * 3;
-    ESTD_BUBBLE(
+    ESTD_OP(
         estdArenaArray(&self->buffers, allocator, self->buffer_count),
-        "Could not allocate %zu buffers",
+        "allocating %zu buffers",
         self->buffer_count
     );
-    ESTD_DEBUG("Buffers created");
 
     self->texture_count = config.model_count * 4;
-    ESTD_BUBBLE(
+    ESTD_OP(
         estdArenaArray(&self->textures, allocator, self->texture_count),
-        "Could not allocate %zu textures",
+        "allocating %zu textures",
         self->texture_count
     );
-    ESTD_DEBUG("Textures created");
 
     *o_self = self;
     return GALA_SUCCESS;
 }
 
 GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator) {
-    galaPushCommand(
-        self,
-        .type = GALA_COMMAND_TYPE_BIND_PIPELINE,
-        .bind_pipeline = {.pipeline = &self->pipelines[GALA_PIPELINE_NAME_QUAD]}
+    ESTD_BUBBLE(
+        galaPushCommand(
+            self,
+            .type = GALA_COMMAND_TYPE_BIND_PIPELINE,
+            .bind_pipeline = {.pipeline = &self->pipelines[GALA_PIPELINE_NAME_QUAD]}
+        ),
+        "Could not push bind pipeline command"
     );
 
-    galaPushCommand(
-        self,
-        .type = GALA_COMMAND_TYPE_BIND_VERTEX_ARRAY,
-        .bind_vertex_array = {.vertex_array = &self->vertex_arrays[0]}
+    ESTD_BUBBLE(
+        galaPushCommand(
+            self,
+            .type = GALA_COMMAND_TYPE_BIND_VERTEX_ARRAY,
+            .bind_vertex_array = {.vertex_array = &self->vertex_arrays[0]}
+        ),
+        "Could not push bind vertex array command"
     );
 
-    galaPushCommand(self, .type = GALA_COMMAND_TYPE_DRAW_ARRAYS, .draw_arrays = {.start = 0, .count = 3});
+    ESTD_BUBBLE(
+        galaPushCommand(self, .type = GALA_COMMAND_TYPE_DRAW_ARRAYS, .draw_arrays = {.start = 0, .count = 3}),
+        "Could not push draw triangle command"
+    );
 
     for (size_t c = 0; c < self->command_queue_count; c++) {
         ESTD_BUBBLE(

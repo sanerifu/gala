@@ -45,14 +45,10 @@ static GalaResult galaGetAttributeType(EstdString* o_ret, GalaAttribute const* a
                 } else if (attr->count == 4) {
                     type_specifier = ESTD_LITERAL("uvec4");
                 } else {
-                    ESTD_THROW(
-                        GALA_RESULT_INVALID_ATTRIBUTE,
-                        "Invalid number of elements for unsigned integer attribute: %d",
-                        attr->count
-                    );
+                    ESTD_THROW(GALA_RESULT_INVALID_ATTRIBUTE, "Unsigned integer attribute with count %d", attr->count);
                 }
             } else {
-                ESTD_THROW(GALA_RESULT_INVALID_ATTRIBUTE, "Cannot use floating-point numbers for integer attribute");
+                ESTD_THROW(GALA_RESULT_INVALID_ATTRIBUTE, "floating-point element type for integer attribute");
             }
             break;
         case GALA_ATTRIBUTE_TYPE_FLOAT:
@@ -66,11 +62,7 @@ static GalaResult galaGetAttributeType(EstdString* o_ret, GalaAttribute const* a
             } else if (attr->count == 4) {
                 type_specifier = ESTD_LITERAL("vec4");
             } else {
-                ESTD_THROW(
-                    GALA_RESULT_INVALID_ATTRIBUTE,
-                    "Invalid number of elements for floating point attribute: %d",
-                    attr->count
-                );
+                ESTD_THROW(GALA_RESULT_INVALID_ATTRIBUTE, "floating point attribute with count %d", attr->count);
             }
             break;
     }
@@ -83,14 +75,14 @@ static GalaResult galaMakeShader(GLuint* o_shader, EstdString source, GLenum typ
     char info_log[512];
 
     GLuint shader;
-    GALA_GL(shader = glCreateShader(type), "Could not create shader");
-    GALA_GL(glShaderSource(shader, 1, (char const* const*)&source.data, NULL), "Could not give source to shader");
-    GALA_GL(glCompileShader(shader), "Could not compile shader");
+    GALA_GLOP(shader = glCreateShader(type), "shader creation");
+    GALA_GLOP(glShaderSource(shader, 1, (char const* const*)&source.data, NULL), "shader source upload");
+    GALA_GLOP(glCompileShader(shader), "shader compilation");
 
-    GALA_GL(glGetShaderiv(shader, GL_COMPILE_STATUS, &success), "Could not get shader success");
+    GALA_GLOP(glGetShaderiv(shader, GL_COMPILE_STATUS, &success), "querying shader compilation status");
     if (!success) {
-        GALA_GL(glGetShaderInfoLog(shader, 512, NULL, info_log), "Could not get shader info log");
-        ESTD_THROW(GALA_RESULT_SHADER_COMPILATION_ERROR, "Could not compile shader: %s", info_log);
+        GALA_GLOP(glGetShaderInfoLog(shader, 512, NULL, info_log), "retrieving shader info log");
+        ESTD_THROW(GALA_RESULT_SHADER_COMPILATION_ERROR, "shader compilation: %s", info_log);
     }
     *o_shader = shader;
     return GALA_SUCCESS;
@@ -101,19 +93,19 @@ static GalaResult galaMakeProgram(GLuint* o_program, GLuint vertex_shader, GLuin
     char info_log[512];
 
     GLuint program;
-    GALA_GL(program = glCreateProgram(), "Could not create program");
-    GALA_GL(glAttachShader(program, vertex_shader), "Could not attach vertex shader to program");
-    GALA_GL(glAttachShader(program, fragment_shader), "Could not attach fragment shader to program");
-    GALA_GL(glLinkProgram(program), "Could not link program");
+    GALA_GLOP(program = glCreateProgram(), "program creation");
+    GALA_GLOP(glAttachShader(program, vertex_shader), "attaching vertex shader to program");
+    GALA_GLOP(glAttachShader(program, fragment_shader), "attaching fragment shader to program");
+    GALA_GLOP(glLinkProgram(program), "linking program");
 
-    GALA_GL(glGetProgramiv(program, GL_LINK_STATUS, &success), "Could not get program success");
+    GALA_GLOP(glGetProgramiv(program, GL_LINK_STATUS, &success), "querying program success");
     if (!success) {
-        GALA_GL(glGetProgramInfoLog(program, 512, NULL, info_log), "Could not get program info log");
-        ESTD_THROW(GALA_RESULT_PROGRAM_LINKAGE_ERROR, "Could not link program: %s", info_log);
+        GALA_GLOP(glGetProgramInfoLog(program, 512, NULL, info_log), "retrieving program info log");
+        ESTD_THROW(GALA_RESULT_PROGRAM_LINKAGE_ERROR, "linking program: %s", info_log);
     }
 
-    GALA_GL(glDeleteShader(vertex_shader), "Could not delete vertex shader");
-    GALA_GL(glDeleteShader(fragment_shader), "Could not delete fragment shader");
+    GALA_GLOP(glDeleteShader(vertex_shader), "deleting vertex shader");
+    GALA_GLOP(glDeleteShader(fragment_shader), "deleting fragment shader");
 
     *o_program = program;
     return GALA_SUCCESS;
@@ -123,21 +115,21 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
     GalaProgram program = *io_program;
     ESTD_CLEAN(estdArenaDestroy) EstdArena* arena = NULL;
     EstdString filename;
-    ESTD_BUBBLE(
+    ESTD_OP(
         estdStringFormat(&filename, &arena, "shaders/%" PRIestr ".glsl", ESTD_STRING_ARG(program.name)),
-        "Could not create filename for shader %" PRIestr,
+        "creating filename for shader %" PRIestr,
         ESTD_STRING_ARG(program.name)
     );
     ESTD_CLEAN(fclose) FILE* file = fopen(filename.data, "rb");
-    ESTD_BUBBLE(
+    ESTD_OP(
         estdReadFile(&program.source, allocator, file),
-        "Could not read program %" PRIestr " file %" PRIestr,
+        "reading program %" PRIestr " file %" PRIestr,
         ESTD_STRING_ARG(program.name),
         ESTD_STRING_ARG(filename)
     );
 
     EstdStringBuilder* vertex_source_builder = NULL;
-    ESTD_BUBBLE(
+    ESTD_OP(
         estdStringBuilderAppend(
             &vertex_source_builder,
             ESTD_LITERAL(
@@ -147,21 +139,21 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
             ),
             &arena
         ),
-        "Could not prepend prelude to vertex shader %" PRIestr,
+        "prepending prelude to vertex shader %" PRIestr,
         ESTD_STRING_ARG(program.name)
     );
 
     for (size_t a = 0; a < program.attribute_count; a++) {
         GalaAttribute const* attr = &program.attributes[a];
         EstdString type_specifier;
-        ESTD_BUBBLE(
+        ESTD_OP(
             galaGetAttributeType(&type_specifier, attr),
-            "Could not get attribute type of attribute %" PRIestr " in program %" PRIestr,
+            "getting attribute type of attribute %" PRIestr " in program %" PRIestr,
             ESTD_STRING_ARG(attr->name),
             ESTD_STRING_ARG(program.name)
         );
 
-        ESTD_BUBBLE(
+        ESTD_OP(
             estdStringBuilderAppendf(
                 &vertex_source_builder,
                 &arena,
@@ -170,13 +162,13 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
                 ESTD_STRING_ARG(type_specifier),
                 ESTD_STRING_ARG(attr->name)
             ),
-            "Could not prepend attribute %" PRIestr " to source string for shader %" PRIestr,
+            "prepending attribute %" PRIestr " to source string for shader %" PRIestr,
             ESTD_STRING_ARG(attr->name),
             ESTD_STRING_ARG(program.name)
         );
     }
 
-    ESTD_BUBBLE(
+    ESTD_OP(
         estdStringBuilderAppendf(
             &vertex_source_builder,
             &arena,
@@ -184,20 +176,19 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
             "%" PRIestr,
             ESTD_STRING_ARG(program.source)
         ),
-        "Could not append source %" PRIestr " to vertex shader source",
+        "appending source %" PRIestr " to vertex shader source",
         ESTD_STRING_ARG(program.name)
     );
 
     EstdString vertex_source;
-    ESTD_BUBBLE(
+    ESTD_OP(
         estdStringBuilderBuild(&vertex_source, &vertex_source_builder, &arena),
-        "Could not build vertex shader source for %" PRIestr,
+        "building vertex shader source for %" PRIestr,
         ESTD_STRING_ARG(program.name)
     );
-    ESTD_DEBUG("Vertex: %" PRIestr, ESTD_STRING_ARG(vertex_source));
 
     EstdStringBuilder* fragment_source_builder = NULL;
-    ESTD_BUBBLE(
+    ESTD_OP(
         estdStringBuilderAppendf(
             &fragment_source_builder,
             &arena,
@@ -208,39 +199,35 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
             "%" PRIestr,
             ESTD_STRING_ARG(program.source)
         ),
-        "Could not prepend prelude to fragment shader %" PRIestr,
+        "prepending prelude to fragment shader %" PRIestr,
         ESTD_STRING_ARG(program.name)
     );
 
     EstdString fragment_source;
-    ESTD_BUBBLE(
+    ESTD_OP(
         estdStringBuilderBuild(&fragment_source, &fragment_source_builder, &arena),
-        "Could not build fragment shader source for %" PRIestr,
+        "building fragment shader source for %" PRIestr,
         ESTD_STRING_ARG(program.name)
     );
-    ESTD_DEBUG("Fragment: %" PRIestr, ESTD_STRING_ARG(fragment_source));
 
     GLuint vertex_shader, fragment_shader;
-    ESTD_BUBBLE(
+    ESTD_OP(
         galaMakeShader(&vertex_shader, vertex_source, GL_VERTEX_SHADER),
-        "Could not create vertex shader for program %" PRIestr,
+        "creating vertex shader for program %" PRIestr,
         ESTD_STRING_ARG(program.name)
     );
-    ESTD_DEBUG("Created vertex shader for program %" PRIestr, ESTD_STRING_ARG(program.name));
 
-    ESTD_BUBBLE(
+    ESTD_OP(
         galaMakeShader(&fragment_shader, fragment_source, GL_FRAGMENT_SHADER),
-        "Could not create fragment shader for program %" PRIestr,
+        "creating fragment shader for program %" PRIestr,
         ESTD_STRING_ARG(program.name)
     );
-    ESTD_DEBUG("Created fragment shader for program %" PRIestr, ESTD_STRING_ARG(program.name));
 
-    ESTD_BUBBLE(
+    ESTD_OP(
         galaMakeProgram(&program.gl, vertex_shader, fragment_shader),
-        "Could not create program %" PRIestr,
+        "creating program %" PRIestr,
         ESTD_STRING_ARG(program.name)
     );
-    ESTD_DEBUG("Created program %" PRIestr, ESTD_STRING_ARG(program.name));
 
     *io_program = program;
     return GALA_SUCCESS;
@@ -248,11 +235,11 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
 
 // TODO: Add buffers
 static GalaResult galaCreateVertexArray(GalaVertexArray* vertex_array) {
-    GALA_GL(glGenVertexArrays(1, &vertex_array->gl), "Could not generate vertex array");
-    GALA_GL(glBindVertexArray(vertex_array->gl), "Could not bind vertex array");
+    GALA_GLOP(glGenVertexArrays(1, &vertex_array->gl), "generating vertex array");
+    GALA_GLOP(glBindVertexArray(vertex_array->gl), "binding vertex array");
     for (size_t a = 0; a < vertex_array->attribute_count; a++) {
         GalaAttribute const* attr = &vertex_array->attributes[a];
-        GALA_GL(glEnableVertexAttribArray(a), "Could not enable attribute %zu", a);
+        GALA_GLOP(glEnableVertexAttribArray(a), "enabling attribute %zu", a);
         GLboolean normalized = GL_FALSE;
         // TODO: fix strides by summing
         switch (attr->type) {
@@ -266,22 +253,22 @@ static GalaResult galaCreateVertexArray(GalaVertexArray* vertex_array) {
                 break;
         }
     }
-    GALA_GL(glBindVertexArray(0), "Could not unbind vertex array");
+    GALA_GLOP(glBindVertexArray(0), "unbinding vertex array");
     return GALA_SUCCESS;
 }
 
 static GalaResult galaBindPipeline(GalaPipeline* pipeline) {
-    GALA_GL(glUseProgram(pipeline->program->gl), "Could not use program");
+    GALA_GL(glUseProgram(pipeline->program->gl), "using program");
     return GALA_SUCCESS;
 }
 
 static GalaResult galaBindVertexArray(GalaVertexArray* vertex_array) {
-    GALA_GL(glBindVertexArray(vertex_array->gl), "Could not bind vertex array");
+    GALA_GL(glBindVertexArray(vertex_array->gl), "binding vertex array");
     return GALA_SUCCESS;
 }
 
 static GalaResult galaDrawArrays(int start, int count) {
-    GALA_GL(glDrawArrays(GL_TRIANGLES, start, count), "Could not draw arrays");
+    GALA_GL(glDrawArrays(GL_TRIANGLES, start, count), "drawing arrays");
     return GALA_SUCCESS;
 }
 
@@ -289,25 +276,19 @@ GalaResult galaProcessCommand(GalaCommand* command) {
     EstdArena* arena;
     switch (command->type) {
         case GALA_COMMAND_TYPE_CREATE_PROGRAM:
-            ESTD_BUBBLE(galaCreateProgram(command->create_program.program, &arena), "Could not create program");
+            ESTD_BUBBLE(galaCreateProgram(command->create_program.program, &arena), "creating program");
             break;
         case GALA_COMMAND_TYPE_CREATE_VERTEX_ARRAY:
-            ESTD_BUBBLE(
-                galaCreateVertexArray(command->create_vertex_array.vertex_array),
-                "Could not create vertex array"
-            );
+            ESTD_BUBBLE(galaCreateVertexArray(command->create_vertex_array.vertex_array), "creating vertex array");
             break;
         case GALA_COMMAND_TYPE_BIND_PIPELINE:
-            ESTD_BUBBLE(galaBindPipeline(command->bind_pipeline.pipeline), "Could not bind pipeline");
+            ESTD_BUBBLE(galaBindPipeline(command->bind_pipeline.pipeline), "binding pipeline");
             break;
         case GALA_COMMAND_TYPE_BIND_VERTEX_ARRAY:
-            ESTD_BUBBLE(galaBindVertexArray(command->bind_vertex_array.vertex_array), "Could not bind vertex array");
+            ESTD_BUBBLE(galaBindVertexArray(command->bind_vertex_array.vertex_array), "binding vertex array");
             break;
         case GALA_COMMAND_TYPE_DRAW_ARRAYS:
-            ESTD_BUBBLE(
-                galaDrawArrays(command->draw_arrays.start, command->draw_arrays.count),
-                "Could not draw arrays"
-            );
+            ESTD_BUBBLE(galaDrawArrays(command->draw_arrays.start, command->draw_arrays.count), "drawing arrays");
             break;
     }
     return GALA_SUCCESS;
