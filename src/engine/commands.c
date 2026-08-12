@@ -70,7 +70,97 @@ static GalaResult galaGetAttributeType(EstdString* o_ret, GalaAttribute const* a
     return GALA_SUCCESS;
 }
 
+static EstdString galaGetTextureFormatPrefix(GalaTextureFormat format) {
+    switch (format) {
+        case GALA_TEXTURE_FORMAT_R8I:
+        case GALA_TEXTURE_FORMAT_R16I:
+        case GALA_TEXTURE_FORMAT_R32I:
+        case GALA_TEXTURE_FORMAT_RG8I:
+        case GALA_TEXTURE_FORMAT_RG16I:
+        case GALA_TEXTURE_FORMAT_RG32I:
+        case GALA_TEXTURE_FORMAT_RGBA32I:
+        case GALA_TEXTURE_FORMAT_RGB32I:
+        case GALA_TEXTURE_FORMAT_RGBA16I:
+        case GALA_TEXTURE_FORMAT_RGB16I:
+        case GALA_TEXTURE_FORMAT_RGBA8I:
+        case GALA_TEXTURE_FORMAT_RGB8I:
+            return ESTD_LITERAL("i");
+
+        case GALA_TEXTURE_FORMAT_R8UI:
+        case GALA_TEXTURE_FORMAT_R16UI:
+        case GALA_TEXTURE_FORMAT_R32UI:
+        case GALA_TEXTURE_FORMAT_RG8UI:
+        case GALA_TEXTURE_FORMAT_RG16UI:
+        case GALA_TEXTURE_FORMAT_RG32UI:
+        case GALA_TEXTURE_FORMAT_RGBA32UI:
+        case GALA_TEXTURE_FORMAT_RGB32UI:
+        case GALA_TEXTURE_FORMAT_RGBA16UI:
+        case GALA_TEXTURE_FORMAT_RGB16UI:
+        case GALA_TEXTURE_FORMAT_RGBA8UI:
+        case GALA_TEXTURE_FORMAT_RGB8UI:
+            return ESTD_LITERAL("u");
+
+        case GALA_TEXTURE_FORMAT_R8:
+        case GALA_TEXTURE_FORMAT_R16:
+        case GALA_TEXTURE_FORMAT_RG8:
+        case GALA_TEXTURE_FORMAT_RG16:
+        case GALA_TEXTURE_FORMAT_R16F:
+        case GALA_TEXTURE_FORMAT_R32F:
+        case GALA_TEXTURE_FORMAT_RG16F:
+        case GALA_TEXTURE_FORMAT_RG32F:
+        case GALA_TEXTURE_FORMAT_R3_G3_B2:
+        case GALA_TEXTURE_FORMAT_RGB4:
+        case GALA_TEXTURE_FORMAT_RGB5:
+        case GALA_TEXTURE_FORMAT_RGB8:
+        case GALA_TEXTURE_FORMAT_RGB10:
+        case GALA_TEXTURE_FORMAT_RGB12:
+        case GALA_TEXTURE_FORMAT_RGB16:
+        case GALA_TEXTURE_FORMAT_RGBA2:
+        case GALA_TEXTURE_FORMAT_RGBA4:
+        case GALA_TEXTURE_FORMAT_RGB5_A1:
+        case GALA_TEXTURE_FORMAT_RGBA8:
+        case GALA_TEXTURE_FORMAT_RGB10_A2:
+        case GALA_TEXTURE_FORMAT_RGBA12:
+        case GALA_TEXTURE_FORMAT_RGBA16:
+        case GALA_TEXTURE_FORMAT_SRGB8:
+        case GALA_TEXTURE_FORMAT_SRGBA8:
+        case GALA_TEXTURE_FORMAT_RGB9_E5:
+        case GALA_TEXTURE_FORMAT_R11F_G11F_B10F:
+            return ESTD_LITERAL("");
+    }
+    return ESTD_LITERAL("");
+}
+
+static EstdString galaGetTextureTypeName(GalaTextureType type) {
+    switch (type) {
+        case GALA_TEXTURE_TYPE_2D:
+            return ESTD_LITERAL("sampler2D");
+        case GALA_TEXTURE_TYPE_ARRAY_2D:
+            return ESTD_LITERAL("sampler2DArray");
+        case GALA_TEXTURE_TYPE_CUBEMAP:
+            return ESTD_LITERAL("samplerCubemap");
+    }
+    return ESTD_LITERAL("");
+}
+
+static GalaResult galaGetTextureUnitText(EstdString* o_ret, GalaTextureUnit const* unit, EstdArena** allocator) {
+    ESTD_OP(
+        estdStringFormat(
+            o_ret,
+            allocator,
+            "uniform %" PRIestr "%" PRIestr " %" PRIestr ";",
+            ESTD_STRING_ARG(galaGetTextureFormatPrefix(unit->format)),
+            ESTD_STRING_ARG(galaGetTextureTypeName(unit->type)),
+            ESTD_STRING_ARG(unit->name)
+        ),
+        "creating uniform string for texture unit %" PRIestr,
+        ESTD_STRING_ARG(unit->name)
+    );
+    return GALA_SUCCESS;
+}
+
 static GalaResult galaMakeShader(GLuint* o_shader, EstdString source, GLenum type) {
+    ESTD_INFO("source: %" PRIestr, ESTD_STRING_ARG(source));
     GLint success;
     char info_log[512];
 
@@ -168,6 +258,21 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
         );
     }
 
+    for (size_t t = 0; t < program.texture_unit_count; t++) {
+        GalaTextureUnit const* tex = &program.texture_units[t];
+        EstdString declaration;
+        ESTD_OP(
+            galaGetTextureUnitText(&declaration, tex, &arena),
+            "creating texture unit text for %" PRIestr,
+            ESTD_STRING_ARG(tex->name)
+        );
+        ESTD_OP(
+            estdStringBuilderAppendf(&vertex_source_builder, &arena, "%" PRIestr "\n", ESTD_STRING_ARG(declaration)),
+            "prepending texture unit %" PRIestr,
+            ESTD_STRING_ARG(tex->name)
+        );
+    }
+
     ESTD_OP(
         estdStringBuilderAppendf(
             &vertex_source_builder,
@@ -195,11 +300,35 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
             "#version 410 core\n"
             "#define FRAGMENT 1\n"
             "#define VARYING in\n"
+        ),
+        "prepending prelude to fragment shader %" PRIestr,
+        ESTD_STRING_ARG(program.name)
+    );
+
+    for (size_t t = 0; t < program.texture_unit_count; t++) {
+        GalaTextureUnit const* tex = &program.texture_units[t];
+        EstdString declaration;
+        ESTD_OP(
+            galaGetTextureUnitText(&declaration, tex, &arena),
+            "creating texture unit text for %" PRIestr,
+            ESTD_STRING_ARG(tex->name)
+        );
+        ESTD_OP(
+            estdStringBuilderAppendf(&fragment_source_builder, &arena, "%" PRIestr "\n", ESTD_STRING_ARG(declaration)),
+            "prepending texture unit %" PRIestr,
+            ESTD_STRING_ARG(tex->name)
+        );
+    }
+
+    ESTD_OP(
+        estdStringBuilderAppendf(
+            &fragment_source_builder,
+            &arena,
             "#line 20001\n"
             "%" PRIestr,
             ESTD_STRING_ARG(program.source)
         ),
-        "prepending prelude to fragment shader %" PRIestr,
+        "appending source %" PRIestr " to vertex shader source",
         ESTD_STRING_ARG(program.name)
     );
 
@@ -228,6 +357,25 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
         "creating program %" PRIestr,
         ESTD_STRING_ARG(program.name)
     );
+
+    GALA_GLOP(glUseProgram(program.gl), "binding program");
+
+    for (size_t t = 0; t < program.texture_unit_count; t++) {
+        GalaTextureUnit const* unit = &program.texture_units[t];
+        EstdString name;
+        ESTD_OP(
+            estdStringDuplicate(&name, unit->name, &arena),
+            "duplicating texture unit name %" PRIestr,
+            ESTD_STRING_ARG(unit->name)
+        );
+        GLint uniform_location;
+        GALA_GLOP(
+            uniform_location = glGetUniformLocation(program.gl, name.data),
+            "getting uniform location for texture unit %" PRIestr,
+            ESTD_STRING_ARG(unit->name)
+        );
+        GALA_GLOP(glad_glUniform1i(uniform_location, t), "setting texture unit %" PRIestr, ESTD_STRING_ARG(unit->name));
+    }
 
     *io_program = program;
     return GALA_SUCCESS;

@@ -68,12 +68,39 @@ static GalaAttribute const mesh_attributes[] = {
     },
 };
 
+static GalaTextureUnit const mesh_texture_units[] = {
+    {
+        .name = ESTD_LITERAL("tAlbedo"),
+        .type = GALA_TEXTURE_TYPE_ARRAY_2D,
+        .format = GALA_TEXTURE_FORMAT_RGBA8,
+    },
+    {
+        .name = ESTD_LITERAL("tNormal"),
+        .type = GALA_TEXTURE_TYPE_ARRAY_2D,
+        .format = GALA_TEXTURE_FORMAT_RGB8,
+    },
+    {
+        .name = ESTD_LITERAL("tOrm"),
+        .type = GALA_TEXTURE_TYPE_ARRAY_2D,
+        .format = GALA_TEXTURE_FORMAT_RGB8,
+    },
+    {
+        .name = ESTD_LITERAL("tEmissive"),
+        .type = GALA_TEXTURE_TYPE_ARRAY_2D,
+        .format = GALA_TEXTURE_FORMAT_RGB8,
+    }
+};
+
 static GalaProgram const programs[] = {
     [GALA_PROGRAM_NAME_MESH] =
         (GalaProgram){
             .name = ESTD_LITERAL("mesh"),
+
             .attribute_count = sizeof(mesh_attributes) / sizeof(mesh_attributes[0]),
             .attributes = mesh_attributes,
+
+            .texture_unit_count = sizeof(mesh_texture_units) / sizeof(mesh_texture_units[0]),
+            .texture_units = mesh_texture_units,
         },
 
     [GALA_PROGRAM_NAME_QUAD] = (GalaProgram){

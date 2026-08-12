@@ -87,6 +87,12 @@ GALA_STRUCT(GalaAttribute) {
     GalaType element_type;
 };
 
+GALA_STRUCT(GalaTextureUnit) {
+    EstdString name;
+    GalaTextureType type;
+    GalaTextureFormat format;
+};
+
 GALA_STRUCT(GalaVertexArray) {
     EstdString name;
     size_t attribute_count;
@@ -97,8 +103,13 @@ GALA_STRUCT(GalaVertexArray) {
 GALA_STRUCT(GalaProgram) {
     EstdString name;
     EstdString source;
+
     size_t attribute_count;
     GalaAttribute const* attributes;
+
+    size_t texture_unit_count;
+    GalaTextureUnit const* texture_units;
+
     uint32_t gl;
 };
 
