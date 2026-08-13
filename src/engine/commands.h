@@ -10,18 +10,24 @@ GALA_STRUCT(GalaCommand) {
     char const* func;
     int line;
     enum {
-        GALA_COMMAND_TYPE_CREATE_PROGRAM,
-        GALA_COMMAND_TYPE_CREATE_VERTEX_ARRAY,
-        GALA_COMMAND_TYPE_BIND_PIPELINE,
-        GALA_COMMAND_TYPE_BIND_VERTEX_ARRAY,
-        GALA_COMMAND_TYPE_DRAW_ARRAYS
+        GALA_COMMAND_CREATE_PROGRAM,
+        GALA_COMMAND_CREATE_BUFFER,
+        GALA_COMMAND_CREATE_VERTEX_ARRAY,
+        GALA_COMMAND_BIND_PIPELINE,
+        GALA_COMMAND_BIND_VERTEX_ARRAY,
+        GALA_COMMAND_DRAW_ARRAYS
     } type;
     union {
         struct {
             GalaProgram* program;
         } create_program;
         struct {
+            GalaBuffer* buffer;
+        } create_buffer;
+        struct {
             GalaVertexArray* vertex_array;
+            GalaBuffer* vertex_buffer;
+            GalaBuffer* instance_buffer;
         } create_vertex_array;
         struct {
             GalaPipeline* pipeline;

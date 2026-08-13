@@ -20,7 +20,19 @@ GALA_ENUM(GalaBufferType){
     GALA_BUFFER_TYPE_DATA = 0,
     GALA_BUFFER_TYPE_UNIFORM = 0x8A11,
     GALA_BUFFER_TYPE_ARRAY = 0x8892,
-    GALA_BUFFER_TYPE_ELEMENT = 0x8893,
+    GALA_BUFFER_TYPE_ELEMENT = 0x8893
+};
+
+GALA_ENUM(GalaBufferUsage){
+    GALA_BUFFER_USAGE_STREAM_DRAW = 0x88E0,
+    GALA_BUFFER_USAGE_STREAM_READ = 0x88E1,
+    GALA_BUFFER_USAGE_STREAM_COPY = 0x88E2,
+    GALA_BUFFER_USAGE_STATIC_DRAW = 0x88E4,
+    GALA_BUFFER_USAGE_STATIC_READ = 0x88E5,
+    GALA_BUFFER_USAGE_STATIC_COPY = 0x88E6,
+    GALA_BUFFER_USAGE_DYNAMIC_DRAW = 0x88E8,
+    GALA_BUFFER_USAGE_DYNAMIC_READ = 0x88E9,
+    GALA_BUFFER_USAGE_DYNAMIC_COPY = 0x88EA
 };
 
 GALA_ENUM(GalaTextureWrap){
@@ -118,8 +130,11 @@ GALA_STRUCT(GalaPipeline) {
 };
 
 GALA_STRUCT(GalaBuffer) {
+    EstdString name;
     GalaBufferType type;
+    GalaBufferUsage usage;
     size_t size;
+    uint8_t* data;
     uint32_t gl;
 };
 
@@ -136,6 +151,7 @@ GALA_STRUCT(GalaTexture) {
     GalaTextureWrap wrap_r;
     GalaTextureMin minification;
     GalaTextureMag magnification;
+    uint8_t* data;
     uint32_t gl;
 };
 

@@ -70,6 +70,39 @@ static GalaResult galaGetAttributeType(EstdString* o_ret, GalaAttribute const* a
     return GALA_SUCCESS;
 }
 
+static size_t galaGetAttributeSize(GalaAttribute const* attr) {
+    size_t element_size;
+    switch (attr->element_type) {
+        case GALA_TYPE_S8:
+            element_size = 1;
+            break;
+        case GALA_TYPE_U8:
+            element_size = 1;
+            break;
+        case GALA_TYPE_S16:
+            element_size = 2;
+            break;
+        case GALA_TYPE_U16:
+            element_size = 2;
+            break;
+        case GALA_TYPE_F16:
+            element_size = 2;
+            break;
+        case GALA_TYPE_S32:
+            element_size = 4;
+            break;
+        case GALA_TYPE_U32:
+            element_size = 4;
+            break;
+        case GALA_TYPE_F32:
+            element_size = 4;
+            break;
+        default:
+            element_size = 0;
+    }
+    return element_size * attr->count;
+}
+
 static EstdString galaGetTextureFormatPrefix(GalaTextureFormat format) {
     switch (format) {
         case GALA_TEXTURE_FORMAT_R8I:
@@ -381,25 +414,72 @@ static GalaResult galaCreateProgram(GalaProgram* io_program, EstdArena** allocat
     return GALA_SUCCESS;
 }
 
-// TODO: Add buffers
-static GalaResult galaCreateVertexArray(GalaVertexArray* vertex_array) {
+static GalaResult galaCreateBuffer(GalaBuffer* io_buffer) {
+    GalaBuffer buffer = *io_buffer;
+
+    GALA_GLOP(glGenBuffers(1, &buffer.gl), "generating buffer %" PRIestr, ESTD_STRING_ARG(buffer.name));
+    GALA_GLOP(glBindBuffer((GLenum)buffer.type, buffer.gl), "binding buffer %" PRIestr, ESTD_STRING_ARG(buffer.name));
+    GALA_GLOP(
+        glBufferData((GLenum)buffer.type, buffer.size, buffer.data, (GLenum)buffer.usage),
+        "allocating buffer %" PRIestr,
+        ESTD_STRING_ARG(buffer.name)
+    );
+
+    *io_buffer = buffer;
+    return GALA_SUCCESS;
+}
+
+static GalaResult
+galaCreateVertexArray(GalaVertexArray* vertex_array, GalaBuffer* vertex_buffer, GalaBuffer* instance_buffer) {
+    if (vertex_array->attributes != 0) {
+        ESTD_ASSERT(
+            GALA_RESULT_NON_MATCHING_BUFFER_TYPES,
+            vertex_buffer->type == GALA_BUFFER_TYPE_ARRAY,
+            "Vertex buffer must be an array buffer"
+        );
+    }
     GALA_GLOP(glGenVertexArrays(1, &vertex_array->gl), "generating vertex array");
     GALA_GLOP(glBindVertexArray(vertex_array->gl), "binding vertex array");
+    if (vertex_array->attributes != 0) {
+        GALA_GLOP(glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer->gl), "binding vertex buffer");
+    }
+    size_t offset = 0;
+    size_t stride = 0;
+    for (size_t a = 0; a < vertex_array->attribute_count; a++) {
+        stride += galaGetAttributeSize(&vertex_array->attributes[a]);
+    }
     for (size_t a = 0; a < vertex_array->attribute_count; a++) {
         GalaAttribute const* attr = &vertex_array->attributes[a];
-        GALA_GLOP(glEnableVertexAttribArray(a), "enabling attribute %zu", a);
+        GALA_GLOP(
+            glEnableVertexAttribArray(a),
+            "enabling attribute %zu named %" PRIestr,
+            a,
+            ESTD_STRING_ARG(attr->name)
+        );
         GLboolean normalized = GL_FALSE;
-        // TODO: fix strides by summing
         switch (attr->type) {
             case GALA_ATTRIBUTE_TYPE_INTEGER:
-                glVertexAttribIPointer(a, attr->count, attr->element_type, 0, NULL);
+                GALA_GLOP(
+                    glVertexAttribIPointer(a, attr->count, attr->element_type, stride, (void*)offset),
+                    "setting integer attribute %" PRIestr " at offset %zu with stride %zu",
+                    ESTD_STRING_ARG(attr->name),
+                    offset,
+                    stride
+                );
                 break;
             case GALA_ATTRIBUTE_TYPE_NORMALIZED:
                 normalized = GL_TRUE;
             case GALA_ATTRIBUTE_TYPE_FLOAT:
-                glVertexAttribPointer(a, attr->count, attr->element_type, normalized, 0, NULL);
+                GALA_GLOP(
+                    glVertexAttribPointer(a, attr->count, attr->element_type, normalized, stride, (void*)offset),
+                    "setting float attribute %" PRIestr " at offset %zu with stride %zu",
+                    ESTD_STRING_ARG(attr->name),
+                    offset,
+                    stride
+                );
                 break;
         }
+        offset += galaGetAttributeSize(attr);
     }
     GALA_GLOP(glBindVertexArray(0), "unbinding vertex array");
     return GALA_SUCCESS;
@@ -423,19 +503,30 @@ static GalaResult galaDrawArrays(int start, int count) {
 GalaResult galaProcessCommand(GalaCommand* command) {
     EstdArena* arena = NULL;
     switch (command->type) {
-        case GALA_COMMAND_TYPE_CREATE_PROGRAM:
+        case GALA_COMMAND_CREATE_PROGRAM:
             ESTD_BUBBLE(galaCreateProgram(command->create_program.program, &arena), "creating program");
             break;
-        case GALA_COMMAND_TYPE_CREATE_VERTEX_ARRAY:
-            ESTD_BUBBLE(galaCreateVertexArray(command->create_vertex_array.vertex_array), "creating vertex array");
+        case GALA_COMMAND_CREATE_BUFFER:
+            ESTD_BUBBLE(galaCreateBuffer(command->create_buffer.buffer), "creating buffer");
             break;
-        case GALA_COMMAND_TYPE_BIND_PIPELINE:
+        case GALA_COMMAND_CREATE_VERTEX_ARRAY:
+            ESTD_BUBBLE(
+                galaCreateVertexArray(
+                    command->create_vertex_array.vertex_array,
+                    command->create_vertex_array.vertex_buffer,
+                    command->create_vertex_array.instance_buffer
+                ),
+                "creating vertex array %" PRIestr,
+                ESTD_STRING_ARG(command->create_vertex_array.vertex_array->name)
+            );
+            break;
+        case GALA_COMMAND_BIND_PIPELINE:
             ESTD_BUBBLE(galaBindPipeline(command->bind_pipeline.pipeline), "binding pipeline");
             break;
-        case GALA_COMMAND_TYPE_BIND_VERTEX_ARRAY:
+        case GALA_COMMAND_BIND_VERTEX_ARRAY:
             ESTD_BUBBLE(galaBindVertexArray(command->bind_vertex_array.vertex_array), "binding vertex array");
             break;
-        case GALA_COMMAND_TYPE_DRAW_ARRAYS:
+        case GALA_COMMAND_DRAW_ARRAYS:
             ESTD_BUBBLE(galaDrawArrays(command->draw_arrays.start, command->draw_arrays.count), "drawing arrays");
             break;
     }

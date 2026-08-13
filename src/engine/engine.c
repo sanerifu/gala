@@ -125,6 +125,29 @@ static GalaResult galaPushCommand(GalaEngine* self, GalaCommand command) {
     return GALA_SUCCESS;
 }
 
+GALA_STRUCT(GalaMeshVertex) {
+    float pos[3];
+    float tex[2];
+    uint16_t nrm[2];
+    uint16_t tgn[2];
+    uint32_t mid;
+};
+
+static GalaMeshVertex const triangle_vertices[] = {
+    (GalaMeshVertex){
+        .pos = {-1.0f, -1.0f, 0.0f},
+        .tex = {0.0f, 0.0f},
+    },
+    (GalaMeshVertex){
+        .pos = {3.0f, -1.0f, 0.0f},
+        .tex = {2.0f, 0.0f},
+    },
+    (GalaMeshVertex){
+        .pos = {-1.0f, 3.0f, 0.0f},
+        .tex = {0.0f, 2.0f},
+    },
+};
+
 #define galaPushCommand(self, ...) \
     galaPushCommand(self, (GalaCommand){.file = __FILE__, .func = __func__, .line = __LINE__, ##__VA_ARGS__})
 
@@ -150,7 +173,7 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
         ESTD_OP(
             galaPushCommand(
                 self,
-                .type = GALA_COMMAND_TYPE_CREATE_PROGRAM,
+                .type = GALA_COMMAND_CREATE_PROGRAM,
                 .create_program =
                     {
                         .program = &self->programs[p],
@@ -180,8 +203,19 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
         "allocating %zu buffers",
         self->buffer_count
     );
+    self->buffers[0] = (GalaBuffer){
+        .name = ESTD_LITERAL("TestVbo"),
+        .usage = GALA_BUFFER_USAGE_STATIC_DRAW,
+        .type = GALA_BUFFER_TYPE_ARRAY,
+        .data = (uint8_t*)triangle_vertices,
+        .size = sizeof(triangle_vertices),
+    };
+    ESTD_OP(
+        galaPushCommand(self, .type = GALA_COMMAND_CREATE_BUFFER, .create_buffer = {.buffer = &self->buffers[0]}),
+        "pushing triangle buffer data"
+    );
 
-    self->vertex_array_count = 1 + config.model_count;
+    self->vertex_array_count = 2 + config.model_count;
     ESTD_OP(
         estdArenaArray(&self->vertex_arrays, allocator, self->vertex_array_count),
         "allocating %zu vertex arrays",
@@ -192,13 +226,26 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
         .attribute_count = 0,
         .attributes = NULL,
     };
+    self->vertex_arrays[1] = (GalaVertexArray){
+        .name = ESTD_LITERAL("AttrTestVao"),
+        .attribute_count = sizeof(mesh_attributes) / sizeof(mesh_attributes[0]),
+        .attributes = mesh_attributes,
+    };
     ESTD_OP(
         galaPushCommand(
             self,
-            .type = GALA_COMMAND_TYPE_CREATE_VERTEX_ARRAY,
+            .type = GALA_COMMAND_CREATE_VERTEX_ARRAY,
             .create_vertex_array = {.vertex_array = &self->vertex_arrays[0]}
         ),
         "pushing empty vertex array creation command"
+    );
+    ESTD_OP(
+        galaPushCommand(
+            self,
+            .type = GALA_COMMAND_CREATE_VERTEX_ARRAY,
+            .create_vertex_array = {.vertex_array = &self->vertex_arrays[1], .vertex_buffer = &self->buffers[0]}
+        ),
+        "pushing mesh vertex array creation command"
     );
 
     self->texture_count = config.model_count * 4;
@@ -216,8 +263,8 @@ GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator) {
     ESTD_BUBBLE(
         galaPushCommand(
             self,
-            .type = GALA_COMMAND_TYPE_BIND_PIPELINE,
-            .bind_pipeline = {.pipeline = &self->pipelines[GALA_PIPELINE_NAME_QUAD]}
+            .type = GALA_COMMAND_BIND_PIPELINE,
+            .bind_pipeline = {.pipeline = &self->pipelines[GALA_PIPELINE_NAME_MESH]}
         ),
         "pushing bind pipeline command"
     );
@@ -225,14 +272,14 @@ GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator) {
     ESTD_BUBBLE(
         galaPushCommand(
             self,
-            .type = GALA_COMMAND_TYPE_BIND_VERTEX_ARRAY,
-            .bind_vertex_array = {.vertex_array = &self->vertex_arrays[0]}
+            .type = GALA_COMMAND_BIND_VERTEX_ARRAY,
+            .bind_vertex_array = {.vertex_array = &self->vertex_arrays[1]}
         ),
         "pushing bind vertex array command"
     );
 
     ESTD_BUBBLE(
-        galaPushCommand(self, .type = GALA_COMMAND_TYPE_DRAW_ARRAYS, .draw_arrays = {.start = 0, .count = 3}),
+        galaPushCommand(self, .type = GALA_COMMAND_DRAW_ARRAYS, .draw_arrays = {.start = 0, .count = 3}),
         "pushing draw triangle command"
     );
 

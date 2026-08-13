@@ -13,7 +13,8 @@
     SEP RESULT(GALA_RESULT_INVALID_ATTRIBUTE)                                  \
     SEP RESULT(GALA_RESULT_OPENGL_ERROR)                                       \
     SEP RESULT(GALA_RESULT_SHADER_COMPILATION_ERROR)                           \
-    SEP RESULT(GALA_RESULT_PROGRAM_LINKAGE_ERROR)
+    SEP RESULT(GALA_RESULT_PROGRAM_LINKAGE_ERROR)                              \
+    SEP RESULT(GALA_RESULT_NON_MATCHING_BUFFER_TYPES)
 ESTD_RESULT(GalaResult, ___GALA_RESULTS);
 
 GALA_STRUCT(GalaEngineConfig) {
