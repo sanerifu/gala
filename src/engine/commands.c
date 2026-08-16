@@ -485,6 +485,77 @@ galaCreateVertexArray(GalaVertexArray* vertex_array, GalaBuffer* vertex_buffer, 
     return GALA_SUCCESS;
 }
 
+static GalaResult galaCreateTexture(GalaTexture* texture) {
+    GALA_GLOP(glGenTextures(1, &texture->gl), "generating texture %" PRIestr, ESTD_STRING_ARG(texture->name));
+    GALA_GLOP(
+        glBindTexture((GLenum)texture->type, texture->gl),
+        "binding texture %" PRIestr,
+        ESTD_STRING_ARG(texture->name)
+    );
+    for (int m = 0; m < texture->mipmap_count; m++) {
+        int width = texture->width >> m ? texture->width >> m : 1;
+        int height = texture->height >> m ? texture->height >> m : 1;
+        switch (texture->type) {
+            case GALA_TEXTURE_TYPE_2D:
+                // TODO: Get data format for all internal formats
+                GALA_GLOP(
+                    glTexImage2D(
+                        (GLenum)texture->type,
+                        m,
+                        (GLenum)texture->format,
+                        width,
+                        height,
+                        0,
+                        GL_RGBA,
+                        GL_UNSIGNED_BYTE,
+                        texture->data
+                    ),
+                    "creating mipmap %d for texture %" PRIestr,
+                    m,
+                    ESTD_STRING_ARG(texture->name)
+                );
+                break;
+                // TODO: Other types
+            case GALA_TEXTURE_TYPE_ARRAY_2D:
+                break;
+            case GALA_TEXTURE_TYPE_CUBEMAP:
+                break;
+        }
+    }
+    GALA_GLOP(
+        glTexParameteri((GLenum)texture->type, GL_TEXTURE_WRAP_S, (GLint)texture->wrap_s),
+        "setting s wrapping for texture %" PRIestr,
+        ESTD_STRING_ARG(texture->name)
+    );
+    GALA_GLOP(
+        glTexParameteri((GLenum)texture->type, GL_TEXTURE_WRAP_T, (GLint)texture->wrap_t),
+        "setting t wrapping for texture %" PRIestr,
+        ESTD_STRING_ARG(texture->name)
+    );
+    GALA_GLOP(
+        glTexParameteri((GLenum)texture->type, GL_TEXTURE_WRAP_R, (GLint)texture->wrap_r),
+        "setting r wrapping for texture %" PRIestr,
+        ESTD_STRING_ARG(texture->name)
+    );
+    GALA_GLOP(
+        glTexParameteri((GLenum)texture->type, GL_TEXTURE_MIN_FILTER, (GLint)texture->minification),
+        "setting minification filter for texture %" PRIestr,
+        ESTD_STRING_ARG(texture->name)
+    );
+    GALA_GLOP(
+        glTexParameteri((GLenum)texture->type, GL_TEXTURE_MAG_FILTER, (GLint)texture->magnification),
+        "setting magnification filter for texture %" PRIestr,
+        ESTD_STRING_ARG(texture->name)
+    );
+    GALA_GLOP(
+        glTexParameteri((GLenum)texture->type, GL_TEXTURE_MAX_LEVEL, (GLint)texture->mipmap_count - 1),
+        "setting mipmap count for texture %" PRIestr,
+        ESTD_STRING_ARG(texture->name)
+    );
+
+    return GALA_SUCCESS;
+}
+
 static GalaResult galaBindPipeline(GalaPipeline* pipeline) {
     GALA_GL(glUseProgram(pipeline->program->gl), "using program");
     return GALA_SUCCESS;
@@ -492,6 +563,17 @@ static GalaResult galaBindPipeline(GalaPipeline* pipeline) {
 
 static GalaResult galaBindVertexArray(GalaVertexArray* vertex_array) {
     GALA_GL(glBindVertexArray(vertex_array->gl), "binding vertex array");
+    return GALA_SUCCESS;
+}
+
+static GalaResult galaBindTexture(int unit, GalaTexture* texture) {
+    GALA_GL(glActiveTexture(unit), "setting active texure unit to %d", unit);
+    GALA_GL(
+        glBindTexture((GLenum)texture->type, texture->gl),
+        "binding texture %" PRIestr " to unit %d",
+        ESTD_STRING_ARG(texture->name),
+        unit
+    );
     return GALA_SUCCESS;
 }
 
@@ -520,11 +602,21 @@ GalaResult galaProcessCommand(GalaCommand* command) {
                 ESTD_STRING_ARG(command->create_vertex_array.vertex_array->name)
             );
             break;
+        case GALA_COMMAND_CREATE_TEXTURE:
+            ESTD_BUBBLE(
+                galaCreateTexture(command->create_texture.texture),
+                "creating texture %" PRIestr,
+                ESTD_STRING_ARG(command->create_texture.texture->name)
+            );
+            break;
         case GALA_COMMAND_BIND_PIPELINE:
             ESTD_BUBBLE(galaBindPipeline(command->bind_pipeline.pipeline), "binding pipeline");
             break;
         case GALA_COMMAND_BIND_VERTEX_ARRAY:
             ESTD_BUBBLE(galaBindVertexArray(command->bind_vertex_array.vertex_array), "binding vertex array");
+            break;
+        case GALA_COMMAND_BIND_TEXTURE:
+            ESTD_BUBBLE(galaBindTexture(command->bind_texture.unit, command->bind_texture.texture), "binding texture");
             break;
         case GALA_COMMAND_DRAW_ARRAYS:
             ESTD_BUBBLE(galaDrawArrays(command->draw_arrays.start, command->draw_arrays.count), "drawing arrays");

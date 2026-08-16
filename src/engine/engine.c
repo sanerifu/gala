@@ -3,6 +3,8 @@
 #include <estd/result.h>
 #include <estd/string_builder.h>
 #include <stdlib.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #include "commands.h"
 #include "glresult.h"
@@ -91,6 +93,14 @@ static GalaTextureUnit const mesh_texture_units[] = {
     }
 };
 
+static GalaTextureUnit const quad_texture_units[] = {
+    {
+        .name = ESTD_LITERAL("tColor"),
+        .type = GALA_TEXTURE_TYPE_2D,
+        .format = GALA_TEXTURE_FORMAT_RGBA8,
+    },
+};
+
 static GalaProgram const programs[] = {
     [GALA_PROGRAM_NAME_MESH] =
         (GalaProgram){
@@ -105,8 +115,12 @@ static GalaProgram const programs[] = {
 
     [GALA_PROGRAM_NAME_QUAD] = (GalaProgram){
         .name = ESTD_LITERAL("quad"),
+
         .attribute_count = 0,
         .attributes = NULL,
+
+        .texture_unit_count = sizeof(quad_texture_units) / sizeof(quad_texture_units[0]),
+        .texture_units = quad_texture_units,
     },
 };
 
@@ -248,11 +262,32 @@ GalaResult galaCreateEngine(GalaEngine** o_self, GalaEngineConfig config, EstdAr
         "pushing mesh vertex array creation command"
     );
 
-    self->texture_count = config.model_count * 4;
+    self->texture_count = 1 + config.model_count * 4;
     ESTD_OP(
         estdArenaArray(&self->textures, allocator, self->texture_count),
         "allocating %zu textures",
         self->texture_count
+    );
+    int width, height;
+    uint8_t* image_data = stbi_load("assets/test.jpg", &width, &height, NULL, 4);
+    self->textures[0] = (GalaTexture){
+        .name = ESTD_LITERAL("TestTexture"),
+        .type = GALA_TEXTURE_TYPE_2D,
+        .format = GALA_TEXTURE_FORMAT_RGBA8,
+        .mipmap_count = 1,
+        .width = width,
+        .height = height,
+        .depth = 1,
+        .wrap_s = GALA_TEXTURE_WRAP_CLAMP_TO_EDGE,
+        .wrap_t = GALA_TEXTURE_WRAP_CLAMP_TO_EDGE,
+        .wrap_r = GALA_TEXTURE_WRAP_CLAMP_TO_EDGE,
+        .minification = GALA_TEXTURE_MIN_LINEAR,
+        .magnification = GALA_TEXTURE_MAG_LINEAR,
+        .data = image_data,
+    };
+    ESTD_OP(
+        galaPushCommand(self, .type = GALA_COMMAND_CREATE_TEXTURE, .create_texture = {.texture = &self->textures[0]}),
+        "pushing texture creation command"
     );
 
     *o_self = self;
@@ -264,7 +299,7 @@ GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator) {
         galaPushCommand(
             self,
             .type = GALA_COMMAND_BIND_PIPELINE,
-            .bind_pipeline = {.pipeline = &self->pipelines[GALA_PIPELINE_NAME_MESH]}
+            .bind_pipeline = {.pipeline = &self->pipelines[GALA_PIPELINE_NAME_QUAD]}
         ),
         "pushing bind pipeline command"
     );
@@ -272,8 +307,17 @@ GalaResult galaUpdateEngine(GalaEngine* self, EstdArena** allocator) {
     ESTD_BUBBLE(
         galaPushCommand(
             self,
+            .type = GALA_COMMAND_BIND_TEXTURE,
+            .bind_texture = {.unit = 0, .texture = &self->textures[0]}
+        ),
+        "pushing bind texture command"
+    );
+
+    ESTD_BUBBLE(
+        galaPushCommand(
+            self,
             .type = GALA_COMMAND_BIND_VERTEX_ARRAY,
-            .bind_vertex_array = {.vertex_array = &self->vertex_arrays[1]}
+            .bind_vertex_array = {.vertex_array = &self->vertex_arrays[0]}
         ),
         "pushing bind vertex array command"
     );

@@ -13,8 +13,10 @@ GALA_STRUCT(GalaCommand) {
         GALA_COMMAND_CREATE_PROGRAM,
         GALA_COMMAND_CREATE_BUFFER,
         GALA_COMMAND_CREATE_VERTEX_ARRAY,
+        GALA_COMMAND_CREATE_TEXTURE,
         GALA_COMMAND_BIND_PIPELINE,
         GALA_COMMAND_BIND_VERTEX_ARRAY,
+        GALA_COMMAND_BIND_TEXTURE,
         GALA_COMMAND_DRAW_ARRAYS
     } type;
     union {
@@ -30,11 +32,18 @@ GALA_STRUCT(GalaCommand) {
             GalaBuffer* instance_buffer;
         } create_vertex_array;
         struct {
+            GalaTexture* texture;
+        } create_texture;
+        struct {
             GalaPipeline* pipeline;
         } bind_pipeline;
         struct {
             GalaVertexArray* vertex_array;
         } bind_vertex_array;
+        struct {
+            int unit;
+            GalaTexture* texture;
+        } bind_texture;
         struct {
             int start;
             int count;
